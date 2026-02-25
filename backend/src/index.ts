@@ -7,8 +7,8 @@ import sensorController from './controllers/sensorController';
 import mqttService from './services/mqttService';
 
 // 配置
-const PORT = process.env.PORT || 8080;
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/sensor-data';
+const PORT = process.env.PORT || 3000;
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/datacenter-dt';
 
 // 创建Express应用
 const app = express();

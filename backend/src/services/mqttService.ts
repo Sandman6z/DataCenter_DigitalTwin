@@ -4,9 +4,9 @@ import { Server } from 'socket.io';
 
 // MQTT配置
 const MQTT_CONFIG = {
-  host: 'mqtt://localhost', // 替换为实际的MQTT broker地址
+  host: process.env.MQTT_BROKER || 'mqtt://mosquitto', // Docker容器中使用服务名
   port: 1883,
-  topic: 'sensor/data', // 替换为实际的MQTT主题
+  topic: process.env.MQTT_TOPIC || 'datacenter/sensors',
   clientId: `mqtt-client-${Math.random().toString(16).substr(2, 8)}`
 };
 

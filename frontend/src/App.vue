@@ -233,13 +233,16 @@ const updateChartData = (temp: number, hum: number) => {
 
 // 初始化Socket连接
 const initSocket = () => {
-  socket = io('http://localhost:8080')
+  // 直接使用相对路径，让Nginx代理处理
+  const socketUrl = '/' 
+  socket = io(socketUrl)
 
   socket.on('connect', () => {
     console.log('Socket connected')
   })
 
   socket.on('sensor-data', (data: any) => {
+    console.log('Received sensor data:', data)
     temperature.value = data.temperature
     humidity.value = data.humidity
     updateStatusClass()
@@ -249,24 +252,20 @@ const initSocket = () => {
   socket.on('disconnect', () => {
     console.log('Socket disconnected')
   })
+
+  socket.on('connect_error', (error) => {
+    console.error('Socket connection error:', error)
+  })
 }
 
-// 模拟数据（临时）
-const simulateData = () => {
-  setInterval(() => {
-    temperature.value = 25 + Math.random() * 5
-    humidity.value = 55 + Math.random() * 10
-    updateStatusClass()
-    updateChartData(temperature.value, humidity.value)
-  }, 2000)
-}
+// 模拟数据函数已移除，现在使用真实MQTT数据
 
 // 生命周期
 onMounted(() => {
   initChart()
   initThreeScene()
   initSocket()
-  simulateData() // 临时模拟数据
+  // simulateData() // 注释掉模拟数据，使用真实MQTT数据
 })
 
 onUnmounted(() => {
