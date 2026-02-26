@@ -7,7 +7,7 @@ import sensorController from './controllers/sensorController';
 import mqttService from './services/mqttService';
 
 // 配置
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3002;
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/datacenter-dt';
 
 // 创建Express应用
@@ -31,7 +31,7 @@ app.use(express.urlencoded({ extended: true }));
 app.get('/api/sensor/latest', sensorController.getLatestData);
 app.get('/api/sensor/historical', sensorController.getHistoricalData);
 app.get('/api/sensor/devices', sensorController.getDevices);
-app.post('/api/sensor/data', sensorController.receiveData);
+app.post('/api/sensor/data', (req, res) => sensorController.receiveData(req, res, io));
 
 // 健康检查
 app.get('/health', (_req, res) => {

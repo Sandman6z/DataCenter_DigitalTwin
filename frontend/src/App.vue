@@ -20,6 +20,9 @@
               <span class="label">设备状态</span>
               <span class="value" :class="statusClass">{{ status }}</span>
             </div>
+            <div class="stat-item">
+              <button @click="initSocket" class="btn">重新连接Socket</button>
+            </div>
           </div>
           <div class="chart-card">
             <h3>历史趋势</h3>
@@ -64,12 +67,13 @@ let camera: THREE.PerspectiveCamera | null = null
 let renderer: THREE.WebGLRenderer | null = null
 let controls: any | null = null
 let socket: Socket | null = null
+let statusLights: THREE.Mesh[] = []
 
 // 历史数据
 const historyData = {
-  time: [] as string[],
-  temperature: [] as number[],
-  humidity: [] as number[]
+  time: ['00:00', '00:01', '00:02', '00:03', '00:04', '00:05', '00:06', '00:07', '00:08', '00:09'],
+  temperature: [25.5, 25.7, 25.9, 26.1, 26.3, 26.5, 26.7, 26.9, 27.1, 27.3],
+  humidity: [60.2, 60.5, 60.8, 61.0, 61.2, 61.5, 61.8, 62.0, 62.3, 62.5]
 }
 
 // 计算状态类
@@ -77,19 +81,40 @@ const updateStatusClass = () => {
   if (temperature.value > 30) {
     status.value = '高温告警'
     statusClass.value = 'warning'
+    // 更新3D模型中的状态指示灯颜色为红色
+    statusLights.forEach(light => {
+      if (light.material instanceof THREE.MeshBasicMaterial) {
+        light.material.color.setHex(0xff0000)
+      }
+    })
   } else if (humidity.value > 80) {
     status.value = '高湿告警'
     statusClass.value = 'warning'
+    // 更新3D模型中的状态指示灯颜色为黄色
+    statusLights.forEach(light => {
+      if (light.material instanceof THREE.MeshBasicMaterial) {
+        light.material.color.setHex(0xffff00)
+      }
+    })
   } else {
     status.value = '正常'
     statusClass.value = 'normal'
+    // 更新3D模型中的状态指示灯颜色为绿色
+    statusLights.forEach(light => {
+      if (light.material instanceof THREE.MeshBasicMaterial) {
+        light.material.color.setHex(0x00ff00)
+      }
+    })
   }
 }
 
 // 初始化图表
 const initChart = () => {
+  console.log('Initializing chart...')
   if (chartRef.value) {
+    console.log('Chart ref found:', chartRef.value)
     chart = echarts.init(chartRef.value)
+    console.log('Chart initialized:', chart)
     const option = {
       tooltip: {
         trigger: 'axis'
@@ -127,7 +152,11 @@ const initChart = () => {
         }
       ]
     }
+    console.log('Chart option:', option)
     chart.setOption(option)
+    console.log('Chart option set successfully')
+  } else {
+    console.error('Chart ref is null')
   }
 }
 
@@ -247,6 +276,7 @@ const createDataCenterModel = () => {
     const light = new THREE.Mesh(lightGeometry, lightMaterial)
     light.position.set(x, y + blueHeight + blackBarHeight + 0.1, z)
     scene?.add(light)
+    statusLights.push(light)
 
     // 为前一列的中间机柜添加温湿度下位机安装位置指示
     if (z === 2 && x === 0) {
@@ -294,21 +324,26 @@ const animate = () => {
 
 // 更新图表数据
 const updateChartData = (temp: number, hum: number) => {
+  console.log('Updating chart data:', { temp, hum })
   const now = new Date()
   const timeStr = `${now.getHours()}:${now.getMinutes()}:${now.getSeconds()}`
+  console.log('Current time:', timeStr)
 
   historyData.time.push(timeStr)
   historyData.temperature.push(temp)
   historyData.humidity.push(hum)
+  console.log('History data after push:', historyData)
 
   // 保持数据点数量
   if (historyData.time.length > 20) {
     historyData.time.shift()
     historyData.temperature.shift()
     historyData.humidity.shift()
+    console.log('History data after shift:', historyData)
   }
 
   if (chart) {
+    console.log('Updating chart with new data')
     chart.setOption({
       xAxis: {
         data: historyData.time
@@ -322,14 +357,24 @@ const updateChartData = (temp: number, hum: number) => {
         }
       ]
     })
+    console.log('Chart updated successfully')
+  } else {
+    console.error('Chart instance is null')
   }
 }
 
 // 初始化Socket连接
 const initSocket = () => {
-  // 直接使用相对路径，让Nginx代理处理
-  const socketUrl = '/' 
-  socket = io(socketUrl)
+  console.log('Initializing Socket connection...')
+  // 连接到后端服务
+  const socketUrl = 'http://localhost:3002' 
+  console.log('Connecting to:', socketUrl)
+  socket = io(socketUrl, {
+    transports: ['websocket'],
+    reconnection: true,
+    reconnectionAttempts: 5,
+    reconnectionDelay: 1000
+  })
 
   socket.on('connect', () => {
     console.log('Socket connected')
@@ -352,14 +397,29 @@ const initSocket = () => {
   })
 }
 
-// 模拟数据函数已移除，现在使用真实MQTT数据
+
+
+// 模拟数据函数
+const simulateData = () => {
+  setInterval(() => {
+    // 生成随机数据
+    const temp = 25 + Math.random() * 10
+    const hum = 50 + Math.random() * 30
+    
+    temperature.value = parseFloat(temp.toFixed(1))
+    humidity.value = parseFloat(hum.toFixed(1))
+    updateStatusClass()
+    updateChartData(temperature.value, humidity.value)
+  }, 1000) // 每1秒更新一次数据
+}
 
 // 生命周期
 onMounted(() => {
+  console.log('onMounted called')
   initChart()
   initThreeScene()
   initSocket()
-  // simulateData() // 注释掉模拟数据，使用真实MQTT数据
+  console.log('onMounted completed')
 })
 
 onUnmounted(() => {
@@ -476,7 +536,7 @@ h3 {
 
 .chart-container {
   width: 100%;
-  height: calc(100% - 2rem);
+  height: 300px;
 }
 
 .three-container {

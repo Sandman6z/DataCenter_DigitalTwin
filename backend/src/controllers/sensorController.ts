@@ -68,7 +68,7 @@ class SensorController {
   }
 
   // 接收HTTP POST的传感器数据（备用方案）
-  async receiveData(req: Request, res: Response): Promise<void> {
+  async receiveData(req: Request, res: Response, io: any): Promise<void> {
     try {
       const data = req.body;
       
@@ -78,20 +78,29 @@ class SensorController {
         return;
       }
 
+      // 计算状态
+      let status = 'normal';
+      if (data.temperature > 30) {
+        status = 'high-temperature';
+      } else if (data.humidity > 80) {
+        status = 'high-humidity';
+      }
+
       // 保存数据到数据库
       const sensorData = new SensorData({
         deviceId: data.deviceId,
         timestamp: data.timestamp || Date.now(),
         temperature: data.temperature,
         humidity: data.humidity,
-        status: this.getStatus(data.temperature, data.humidity)
+        status: status
       });
 
       await sensorData.save();
       console.log('Sensor data saved via HTTP:', data);
 
-      // 广播数据到前端（如果需要）
-      // 注意：这里需要在路由中注入socket.io实例
+      // 广播数据到前端
+      io.emit('sensor-data', data);
+      console.log('Sensor data broadcasted to clients');
 
       res.status(201).json({ message: 'Sensor data received', data: sensorData });
     } catch (error) {
@@ -100,16 +109,7 @@ class SensorController {
     }
   }
 
-  // 根据温湿度获取状态
-  private getStatus(temperature: number, humidity: number): string {
-    if (temperature > 30) {
-      return 'high-temperature';
-    } else if (humidity > 80) {
-      return 'high-humidity';
-    } else {
-      return 'normal';
-    }
-  }
+
 }
 
 // 导出控制器实例
