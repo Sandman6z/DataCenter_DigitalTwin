@@ -27,7 +27,7 @@
           </div>
         </div>
         <div class="right-panel">
-          <div class="3d-view">
+          <div class="view-3d">
             <h3>3D机房模型</h3>
             <div ref="threeRef" class="three-container"></div>
           </div>
@@ -43,6 +43,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import * as THREE from 'three'
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import * as echarts from 'echarts'
 import { io, Socket } from 'socket.io-client'
 
@@ -61,6 +62,7 @@ let chart: echarts.ECharts | null = null
 let scene: THREE.Scene | null = null
 let camera: THREE.PerspectiveCamera | null = null
 let renderer: THREE.WebGLRenderer | null = null
+let controls: any | null = null
 let socket: Socket | null = null
 
 // 历史数据
@@ -153,6 +155,15 @@ const initThreeScene = () => {
     directionalLight.position.set(1, 1, 1)
     scene.add(directionalLight)
 
+    // 添加轨道控制器
+    controls = new OrbitControls(camera, renderer.domElement)
+    controls.enableDamping = true
+    controls.dampingFactor = 0.05
+    controls.enableZoom = true
+    controls.enablePan = true
+    controls.minDistance = 3
+    controls.maxDistance = 15
+
     // 创建机房模型
     createDataCenterModel()
 
@@ -171,28 +182,111 @@ const createDataCenterModel = () => {
   const room = new THREE.Mesh(roomGeometry, roomMaterial)
   scene.add(room)
 
-  // 创建服务器机柜
-  for (let i = -3; i <= 3; i += 2) {
-    for (let j = -3; j <= 3; j += 2) {
-      const cabinetGeometry = new THREE.BoxGeometry(0.8, 2, 0.8)
-      const cabinetMaterial = new THREE.MeshPhongMaterial({ color: 0x333333 })
-      const cabinet = new THREE.Mesh(cabinetGeometry, cabinetMaterial)
-      cabinet.position.set(i, 1, j)
-      scene.add(cabinet)
+  // 创建两列服务器机柜
+  const cabinetPositions = [
+    // 第一列（前面）
+    [0, 0, 2], [1, 0, 2], [2, 0, 2],
+    // 第二列（后面）
+    [0, 0, -2], [1, 0, -2], [2, 0, -2]
+  ]
 
-      // 创建状态指示灯
-      const lightGeometry = new THREE.SphereGeometry(0.1, 16, 16)
-      const lightMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 })
-      const light = new THREE.Mesh(lightGeometry, lightMaterial)
-      light.position.set(i, 2.1, j)
-      scene.add(light)
+  cabinetPositions.forEach(([x, y, z]) => {
+    // 创建机柜主体
+    const cabinetWidth = 1.6 // 原来的两倍宽
+    const cabinetHeight = 1.5 // 原来的3/4高度
+    const cabinetDepth = 0.8
+    const blackBarHeight = 0.15 // 最上面黑色条的高度，比急停按钮直径略大
+    const blueHeight = cabinetHeight - blackBarHeight // 蓝色部分的高度
+    
+    // 主体部分：浅蓝色
+    const blueCabinetGeometry = new THREE.BoxGeometry(cabinetWidth, blueHeight, cabinetDepth)
+    const blueCabinetMaterial = new THREE.MeshPhongMaterial({ color: 0x3498db })
+    const blueCabinet = new THREE.Mesh(blueCabinetGeometry, blueCabinetMaterial)
+    blueCabinet.position.set(x, y + blueHeight / 2, z)
+    scene?.add(blueCabinet)
+    
+    // 最上面的黑色条
+    const blackBarGeometry = new THREE.BoxGeometry(cabinetWidth, blackBarHeight, cabinetDepth)
+    const blackBarMaterial = new THREE.MeshPhongMaterial({ color: 0x2c3e50 })
+    const blackBar = new THREE.Mesh(blackBarGeometry, blackBarMaterial)
+    blackBar.position.set(x, y + blueHeight + blackBarHeight / 2, z)
+    scene?.add(blackBar)
+    
+    // 添加急停开关（红色）
+    const emergencyStopGeometry = new THREE.CylinderGeometry(0.08, 0.08, 0.05, 32)
+    const emergencyStopMaterial = new THREE.MeshPhongMaterial({ color: 0xe74c3c })
+    const emergencyStop = new THREE.Mesh(emergencyStopGeometry, emergencyStopMaterial)
+    emergencyStop.position.set(x + cabinetWidth / 2 - 0.2, y + blueHeight + blackBarHeight / 2, z + cabinetDepth / 2 - 0.1)
+    emergencyStop.rotation.x = Math.PI / 2
+    scene?.add(emergencyStop)
+    
+    // 添加急停开关旁边的指示灯（绿色）
+    const indicatorLightGeometry = new THREE.SphereGeometry(0.05, 16, 16)
+    const indicatorLightMaterial = new THREE.MeshBasicMaterial({ color: 0x2ecc71 })
+    const indicatorLight = new THREE.Mesh(indicatorLightGeometry, indicatorLightMaterial)
+    indicatorLight.position.set(x + cabinetWidth / 2 - 0.4, y + blueHeight + blackBarHeight / 2, z + cabinetDepth / 2 - 0.1)
+    scene?.add(indicatorLight)
+
+    // 添加机柜细节
+    const detailWidth = 1.5
+    const detailHeight = 0.1
+    const detailDepth = 0.7
+    const detailGeometry = new THREE.BoxGeometry(detailWidth, detailHeight, detailDepth)
+    const detailMaterial = new THREE.MeshPhongMaterial({ color: 0x34495e })
+    const detailCount = 4
+    const detailSpacing = (blueHeight - 0.4) / (detailCount - 1)
+    for (let i = 0; i < detailCount; i++) {
+      const detail = new THREE.Mesh(detailGeometry, detailMaterial)
+      detail.position.set(x, y + 0.2 + i * detailSpacing, z)
+      scene?.add(detail)
     }
-  }
+
+    // 创建状态指示灯
+    const lightGeometry = new THREE.SphereGeometry(0.08, 16, 16)
+    const lightMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 })
+    const light = new THREE.Mesh(lightGeometry, lightMaterial)
+    light.position.set(x, y + blueHeight + blackBarHeight + 0.1, z)
+    scene?.add(light)
+
+    // 为前一列的中间机柜添加温湿度下位机安装位置指示
+    if (z === 2 && x === 0) {
+      // 添加温湿度传感器
+      const sensorGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.05)
+      const sensorMaterial = new THREE.MeshPhongMaterial({ color: 0xff6b6b })
+      const sensor = new THREE.Mesh(sensorGeometry, sensorMaterial)
+      sensor.position.set(x, y + blueHeight / 2, z + cabinetDepth / 2 + 0.02)
+      scene?.add(sensor)
+
+      // 创建箭头指向传感器
+      const arrowDir = new THREE.Vector3(1, 0, 0)
+      arrowDir.normalize()
+      const arrowOrigin = new THREE.Vector3(x + cabinetWidth / 2 + 0.2, y + blueHeight / 2, z + cabinetDepth / 2 + 0.02)
+      const arrowLength = 1.5
+      const arrowColor = 0xffff00
+
+      const arrowHelper = new THREE.ArrowHelper(arrowDir, arrowOrigin, arrowLength, arrowColor, 0.3, 0.2)
+      scene?.add(arrowHelper)
+
+      // 添加数据显示面板
+      const panelGeometry = new THREE.PlaneGeometry(1, 0.6)
+      const panelMaterial = new THREE.MeshBasicMaterial({ 
+        color: 0x2c3e50, 
+        side: THREE.DoubleSide 
+      })
+      const panel = new THREE.Mesh(panelGeometry, panelMaterial)
+      panel.position.set(x + cabinetWidth / 2 + arrowLength + 0.5, y + blueHeight / 2, z + cabinetDepth / 2 + 0.02)
+      panel.rotation.y = Math.PI / 2
+      scene?.add(panel)
+    }
+  })
 }
 
 // 动画循环
 const animate = () => {
   if (!scene || !camera || !renderer) return
+
+  // 更新轨道控制器
+  controls?.update()
 
   requestAnimationFrame(animate)
   renderer.render(scene, camera)
@@ -322,7 +416,7 @@ onUnmounted(() => {
 
 .stats-card,
 .chart-card,
-.3d-view {
+.view-3d {
   background-color: white;
   border-radius: 8px;
   padding: 1rem;
@@ -337,7 +431,7 @@ onUnmounted(() => {
   flex: 2;
 }
 
-.3d-view {
+.view-3d {
   height: 100%;
   display: flex;
   flex-direction: column;
