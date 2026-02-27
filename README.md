@@ -26,99 +26,6 @@
 - WebSocket实时数据推送
 - 数据同步和状态更新
 
-## 技术栈
-
-### 前端
-- Vue 3 + TypeScript
-- Three.js（3D可视化）
-- ECharts（数据图表）
-- Socket.io-client（实时通信）
-- Vite（构建工具）
-
-### 后端
-- Node.js + Express
-- MQTT.js（MQTT客户端）
-- MongoDB（数据存储）
-- Socket.io（实时通信）
-- CORS（跨域支持）
-
-## 项目结构
-
-```
-DataCenter_DT/
-├── frontend/          # 前端项目
-│   ├── package.json   # 前端依赖配置
-│   ├── tsconfig.json  # TypeScript配置
-│   ├── vite.config.ts # Vite构建配置
-│   ├── public/        # 静态资源
-│   └── src/           # 源代码
-│       ├── assets/    # 资源文件
-│       ├── components/ # 组件
-│       ├── views/     # 页面
-│       ├── services/  # 服务
-│       └── main.ts    # 入口文件
-├── backend/           # 后端项目
-│   ├── package.json   # 后端依赖配置
-│   ├── tsconfig.json  # TypeScript配置
-│   └── src/           # 源代码
-│       ├── controllers/ # 控制器
-│       ├── models/    # 数据模型
-│       ├── services/  # 服务
-│       └── index.ts   # 入口文件
-└── README.md          # 项目说明
-```
-
-## 前端架构
-
-### 核心组件
-- **3D可视化组件**：基于Three.js实现机房环境的3D展示
-- **数据监控组件**：实时展示温湿度数据和设备状态
-- **图表分析组件**：基于ECharts实现历史数据趋势分析
-- **告警组件**：展示异常数据告警信息
-
-### 服务模块
-- **WebSocket服务**：与后端建立实时通信连接
-- **数据服务**：处理数据的获取、转换和存储
-- **3D渲染服务**：负责3D场景的构建和渲染
-
-## 后端架构
-
-### 核心模块
-- **数据采集模块**：接收和处理来自下位机的数据
-- **数据存储模块**：将数据存储到MongoDB数据库
-- **WebSocket模块**：向前端推送实时数据
-- **MQTT客户端**：订阅和处理MQTT消息
-
-### API接口
-- **数据查询接口**：提供历史数据的查询服务
-- **设备管理接口**：管理设备信息和状态
-- **告警配置接口**：配置异常数据的告警规则
-
-## 数据格式
-
-### 下位机发送的数据格式
-```json
-{
-  "deviceId": "device-001",
-  "timestamp": 1620000000000,
-  "temperature": 25.5,
-  "humidity": 60.2,
-  "status": "normal"
-}
-```
-
-### 系统存储的数据格式
-```json
-{
-  "_id": "mongodb-id",
-  "deviceId": "device-001",
-  "timestamp": 1620000000000,
-  "temperature": 25.5,
-  "humidity": 60.2,
-  "status": "normal",
-  "createdAt": "2021-05-03T00:00:00.000Z"
-}
-```
 
 ## 功能特性
 
@@ -136,69 +43,6 @@ DataCenter_DT/
 - **支持与其他系统集成**：提供API接口与其他系统集成
 - **支持移动端访问**：可扩展为支持移动端访问的响应式设计
 
-## 部署步骤
-
-### 1. 安装依赖
-
-#### 前端依赖
-```bash
-cd frontend
-npm install
-```
-
-#### 后端依赖
-```bash
-cd backend
-npm install
-```
-
-### 2. 配置环境变量
-
-在后端项目中创建`.env`文件，配置MongoDB连接信息和其他环境变量：
-
-```env
-# MongoDB连接信息
-MONGODB_URI=mongodb://localhost:27017/datacenter-dt
-
-# 服务端口
-PORT=3000
-
-# MQTT配置
-MQTT_BROKER=mqtt://localhost:1883
-MQTT_TOPIC=datacenter/sensors
-```
-
-### 3. 启动服务
-
-#### 启动后端服务
-```bash
-cd backend
-npm run dev
-```
-
-#### 启动前端服务
-```bash
-cd frontend
-npm run dev
-```
-
-### 4. 访问系统界面
-
-前端服务启动后，在浏览器中访问：`http://localhost:5173`
-
-## 开发指南
-
-### 前端开发
-- 使用Vue 3的组合式API进行组件开发
-- 使用TypeScript确保类型安全
-- 使用Three.js构建3D场景
-- 使用ECharts实现数据可视化
-
-### 后端开发
-- 使用Express框架构建RESTful API
-- 使用Mongoose操作MongoDB数据库
-- 使用Socket.io实现实时通信
-- 使用MQTT.js处理MQTT消息
 
 ## 技术选型说明
 
@@ -216,39 +60,140 @@ npm run dev
 - **MQTT.js**：轻量级的MQTT客户端，适合处理物联网设备数据
 - **Socket.io**：实现与前端的实时通信
 
-## 系统流程图
 
-```mermaid
-sequenceDiagram
-    participant Device as 下位机
-    participant Backend as 后端服务
-    participant DB as MongoDB
-    participant Frontend as 前端
+## 从源码到部署的操作指南
 
-    Device->>Backend: 发送温湿度数据(MQTT/HTTP)
-    Backend->>DB: 存储数据
-    Backend->>Frontend: 推送实时数据(WebSocket)
-    Frontend->>Frontend: 更新3D可视化
-    Frontend->>Frontend: 更新数据图表
-    Frontend->>Backend: 查询历史数据
-    Backend->>DB: 查询数据
-    DB-->>Backend: 返回数据
-    Backend-->>Frontend: 返回历史数据
-    Frontend->>Frontend: 展示历史趋势
+### 1. 所需软件和组件
+
+在开始部署之前，确保您的系统已经安装了以下软件：
+
+- **Docker**：版本 20.0 或更高
+- **Docker Compose**：版本 1.29 或更高
+- **Git**：用于克隆项目源码
+- **浏览器**：推荐使用 Chrome 或 Firefox
+
+### 2. 项目克隆
+
+使用 Git 克隆项目源码：
+
+```bash
+git clone <项目仓库地址>
+cd DataCenter_DT
 ```
 
-## 监控指标
+### 3. 部署到生产环境
 
-### 温度监控
-- **正常范围**：18-27°C
-- **告警阈值**：>30°C或<15°C
+#### Docker 部署（生产环境推荐）
 
-### 湿度监控
-- **正常范围**：40-60%
-- **告警阈值**：>70%或<30%
+本项目支持使用 Docker 进行部署，提供了完整的 Docker 配置文件，适合生产环境使用。
 
-## 总结
+##### 前提条件
 
-本项目采用前后端分离的架构设计，前端负责数据可视化和用户交互，后端负责数据采集、处理和存储。通过数字孪生技术，实现了机房环境的实时监控和3D可视化，为机房的管理和维护提供了直观、高效的工具。
+- 安装 Docker 和 Docker Compose
+- 确保 80、3000、27017 和 1883 端口未被占用
 
-系统具有良好的扩展性，可以根据需要添加更多的传感器类型和功能模块，满足不同场景下的需求。
+##### 构建 Docker 镜像
+
+在项目根目录执行以下命令：
+
+```bash
+docker compose build
+```
+
+##### 启动 Docker 容器
+
+```bash
+docker compose up -d
+```
+
+##### 访问系统
+
+Docker 容器启动后，在浏览器中访问：
+
+```
+http://localhost
+```
+
+##### 查看容器状态
+
+```bash
+docker compose ps
+```
+
+##### 查看日志
+
+```bash
+docker compose logs -f
+```
+
+##### 停止 Docker 容器
+
+```bash
+docker compose down
+```
+
+##### Docker 配置说明
+
+- **前端**：使用 Nginx 作为静态文件服务器，映射端口 80
+- **后端**：使用 Node.js 运行环境，映射端口 3000
+- **MongoDB**：使用官方 MongoDB 6.0 镜像，映射端口 27017
+- **Mosquitto**：使用官方 Mosquitto 2.0 镜像，映射端口 1883
+
+所有服务都通过 Docker 网络进行通信，确保了服务之间的隔离和安全性。
+
+##### 环境变量配置
+
+在 `docker-compose.yml` 文件中，已经配置了以下环境变量：
+
+- **后端**：
+  - `MONGODB_URI`: `mongodb://mongo:27017/datacenter-dt`（连接到 Docker 网络中的 MongoDB 服务）
+  - `MQTT_BROKER`: `mqtt://mosquitto:1883`（连接到 Docker 网络中的 Mosquitto 服务）
+  - `PORT`: `3000`（后端服务端口）
+  - `NODE_ENV`: `production`（生产环境模式）
+
+##### 数据持久化
+
+- **MongoDB**：使用 Docker 卷 `mongo-db-data` 持久化数据
+- **Mosquitto**：使用 Docker 卷 `mosquitto-data` 和 `mosquitto-log` 持久化数据和日志
+
+##### 生产环境建议
+
+1. **修改 Mosquitto 配置**：在生产环境中，建议将 `mosquitto/config/mosquitto.conf` 文件中的 `allow_anonymous` 设置为 `false` 并配置密码文件
+
+2. **配置域名**：在生产环境中，建议配置域名并启用 HTTPS
+
+3. **调整资源限制**：根据实际部署环境，调整 Docker 容器的资源限制
+
+4. **备份策略**：定期备份 MongoDB 数据卷
+
+5. **监控**：部署监控工具，监控容器状态和系统性能
+
+### 9. 常见问题
+
+#### 端口冲突
+
+如果遇到端口冲突，可以修改 `docker-compose.yml` 文件中的端口映射配置，使用其他可用端口。
+
+#### 容器启动失败
+
+使用以下命令查看容器日志，了解启动失败的原因：
+
+```bash
+docker compose logs -f
+```
+
+#### MQTT 连接失败
+
+确保 Mosquitto 容器已经正常启动，并且后端配置的 `MQTT_BROKER` 地址为 `mqtt://mosquitto:1883`。
+
+#### MongoDB 连接失败
+
+确保 MongoDB 容器已经正常启动，并且后端配置的 `MONGODB_URI` 地址为 `mongodb://mongo:27017/datacenter-dt`。
+
+#### 前端无法连接到后端
+
+确保后端容器已经正常启动，并且前端代码中的 Socket 连接使用相对路径。
+
+#### 构建镜像失败
+
+确保您的网络连接正常，并且 Docker 环境配置正确。如果构建过程中遇到依赖安装失败，可以尝试修改 Dockerfile 中的镜像源。

@@ -1,5 +1,5 @@
 # 第一阶段：构建前端应用
-FROM node:16-alpine as build
+FROM node:20-alpine as build
 
 # 设置工作目录
 WORKDIR /app
@@ -13,8 +13,8 @@ RUN npm install
 # 复制源代码
 COPY . .
 
-# 构建应用
-RUN npm run build
+# 清理并重新构建，解决Rollup依赖问题
+RUN rm -rf node_modules && npm install && npm run build
 
 # 第二阶段：使用Nginx部署静态资源
 FROM nginx:alpine

@@ -23,8 +23,8 @@ export const useSensorStore = defineStore('sensor', () => {
   const currentHumidity = computed(() => latestData.value?.humidity || 50)
 
   // API 基础路径
-  const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3000/api'
-  const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000'
+  const API_BASE = '/api'
+  const SOCKET_URL = '/' // 使用相对路径
 
   // 初始化 Socket 连接
   const initSocket = () => {

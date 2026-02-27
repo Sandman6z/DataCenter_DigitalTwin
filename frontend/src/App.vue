@@ -41,7 +41,7 @@
       </div>
     </main>
     <footer class="app-footer">
-      <p>© 2026 机房温湿度数字孪生系统 - 已优化架构</p>
+      <p>© 2026 机房温湿度数字孪生系统</p>
     </footer>
   </div>
 </template>
