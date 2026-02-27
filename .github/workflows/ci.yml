@@ -1,0 +1,93 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm run install:all
+      
+      - name: Build frontend
+        run: npm run build --prefix frontend
+      
+      - name: Build backend
+        run: npm run build --prefix backend
+      
+      - name: Build Docker images
+        run: docker-compose build
+      
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Tag and push Docker images
+        run: |
+          docker tag datacenter_dt-frontend ghcr.io/${{ github.repository_owner }}/datacenter-dt-frontend:${{ github.sha }}
+          docker tag datacenter_dt-backend ghcr.io/${{ github.repository_owner }}/datacenter-dt-backend:${{ github.sha }}
+          docker push ghcr.io/${{ github.repository_owner }}/datacenter-dt-frontend:${{ github.sha }}
+          docker push ghcr.io/${{ github.repository_owner }}/datacenter-dt-backend:${{ github.sha }}
+  
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          password: ${{ secrets.DEPLOY_PASSWORD }}
+          port: ${{ secrets.DEPLOY_PORT || '22' }}
+          script: |
+            # 进入部署目录
+            cd ${{ secrets.DEPLOY_DIR }}
+            
+            # 拉取最新的Docker镜像
+            docker pull ghcr.io/${{ github.repository_owner }}/datacenter-dt-frontend:${{ github.sha }}
+            docker pull ghcr.io/${{ github.repository_owner }}/datacenter-dt-backend:${{ github.sha }}
+            
+            # 停止并移除旧容器
+            docker-compose down || true
+            
+            # 更新docker-compose.yml中的镜像标签
+            sed -i 's|ghcr.io/.*datacenter-dt-frontend:.*|ghcr.io/${{ github.repository_owner }}/datacenter-dt-frontend:${{ github.sha }}|g' docker-compose.yml
+            sed -i 's|ghcr.io/.*datacenter-dt-backend:.*|ghcr.io/${{ github.repository_owner }}/datacenter-dt-backend:${{ github.sha }}|g' docker-compose.yml
+            
+            # 启动新容器
+            docker-compose up -d
+            
+            # 清理未使用的镜像
+            docker image prune -f

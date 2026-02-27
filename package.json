@@ -1,7 +1,14 @@
 {
-  "name": "datacenter-dt-root",
+  "name": "@datacenter-dt/root",
   "version": "1.0.0",
   "description": "Root management for DataCenter Digital Twin",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Sandman6z/DataCenter_DigitalTwin.git"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/"
+  },
   "scripts": {
     "install:all": "npm install --prefix backend && npm install --prefix frontend",
     "build:all": "npm run build --prefix backend && npm run build --prefix frontend",

@@ -1,8 +1,15 @@
 {
-  "name": "frontend",
-  "private": true,
-  "version": "0.0.0",
+  "name": "@datacenter-dt/frontend",
+  "private": false,
+  "version": "1.0.0",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/DataCenter_DT.git"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc && vite build",
