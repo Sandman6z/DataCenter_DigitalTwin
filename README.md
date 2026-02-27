@@ -11,6 +11,43 @@
 - 支持多种传输协议：MQTT、HTTP、WebSocket
 - 数据格式：JSON
 
+#### MQTT 配置和格式
+
+##### MQTT 端口
+- **默认端口**：1883（Docker 部署时映射到主机的 1883 端口）
+- **协议**：MQTT v3.1.1 或 v5.0
+- **连接地址**：
+  - 本地开发：`mqtt://localhost:1883`
+  - Docker 部署：`mqtt://mosquitto:1883`（容器内部）或 `mqtt://localhost:1883`（主机访问）
+
+##### MQTT 主题格式
+- **数据上报主题**：`datacenter/sensors`
+- **说明**：所有传感器数据都发布到同一个主题，设备ID通过消息体中的`deviceId`字段区分
+
+##### MQTT 消息格式
+```json
+{
+  "deviceId": "sensor-001",
+  "temperature": 25.5,
+  "humidity": 45.2,
+  "status": "online"
+}
+```
+
+- **字段说明**：
+  - `deviceId`：设备唯一标识符
+  - `timestamp`：数据采集时间戳（ISO 8601 格式）
+  - `temperature`：温度值（摄氏度）
+  - `humidity`：湿度值（百分比）
+  - `status`：设备状态（online/offline）
+
+##### 调试建议
+- 使用 MQTT 客户端工具（如 MQTTX、Mosquitto CLI）连接到 MQTT broker
+- 订阅 `datacenter/sensors` 主题以接收所有传感器数据
+- 发布测试消息到 `datacenter/sensors` 主题进行功能验证
+- 检查 Mosquitto 容器日志以排查连接问题：`docker compose logs mosquitto`
+- 检查后端日志以确认数据处理情况：`docker compose logs backend`
+
 ### 2. 数据处理层
 - 实时数据处理和存储
 - 历史数据查询和分析
