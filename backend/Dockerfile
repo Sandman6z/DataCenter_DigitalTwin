@@ -19,6 +19,9 @@ RUN npm run build
 # 第二阶段：运行后端应用
 FROM node:16-alpine
 
+# 安装 curl 用于健康检查
+RUN apk add --no-cache curl
+
 # 设置工作目录
 WORKDIR /app
 

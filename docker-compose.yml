@@ -1,53 +1,76 @@
-version: '3.8'
-
 services:
   # 前端服务
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    pull_policy: if_not_present
     ports:
       - "80:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    networks:
+      - dt-network
 
   # 后端服务
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    pull_policy: if_not_present
     ports:
       - "3000:3000"
     environment:
+      - NODE_ENV=production
       - MONGODB_URI=mongodb://mongo:27017/datacenter-dt
       - PORT=3000
       - MQTT_BROKER=mqtt://mosquitto:1883
       - MQTT_TOPIC=datacenter/sensors
     depends_on:
-      - mongo
-      - mosquitto
+      mongo:
+        condition: service_healthy
+      mosquitto:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - dt-network
 
-  # MongoDB数据库
+  # MongoDB数据库 (升级到 6.0)
   mongo:
-    image: mongo:4.4
-    pull_policy: if_not_present
+    image: mongo:6.0
     ports:
       - "27017:27017"
     volumes:
-      - mongo-data:/data/db
+      - mongo-db-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - dt-network
 
   # MQTT broker
   mosquitto:
     image: eclipse-mosquitto:2.0
-    pull_policy: if_not_present
     ports:
       - "1883:1883"
     volumes:
       - ./mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - mosquitto-data:/mosquitto/data
+      - mosquitto-log:/mosquitto/log
     restart: unless-stopped
+    networks:
+      - dt-network
 
-# 持久化存储
+networks:
+  dt-network:
+    driver: bridge
+
 volumes:
-  mongo-data:
+  mongo-db-data:
+  mosquitto-data:
+  mosquitto-log:

@@ -1,11 +1,11 @@
 import mqtt from 'mqtt';
-import SensorData from '../models/sensorData';
 import { Server } from 'socket.io';
+import sensorService from './sensorService';
 
 // MQTT配置
 const MQTT_CONFIG = {
-  host: process.env.MQTT_BROKER || 'mqtt://localhost', // 本地开发环境使用localhost
-  port: 1883,
+  host: process.env.MQTT_BROKER || 'mqtt://localhost',
+  port: parseInt(process.env.MQTT_PORT || '1883'),
   topic: process.env.MQTT_TOPIC || 'datacenter/sensors',
   clientId: `mqtt-client-${Math.random().toString(16).substr(2, 8)}`
 };
@@ -60,51 +60,11 @@ class MqttService {
       const data = JSON.parse(message.toString());
       console.log('Received MQTT message:', data);
 
-      // 验证数据格式
-      if (this.validateData(data)) {
-        // 保存数据到数据库
-        const sensorData = new SensorData({
-          deviceId: data.deviceId,
-          timestamp: data.timestamp,
-          temperature: data.temperature,
-          humidity: data.humidity,
-          status: this.getStatus(data.temperature, data.humidity)
-        });
-
-        await sensorData.save();
-        console.log('Sensor data saved to database');
-
-        // 广播数据到前端
-        if (this.io) {
-          this.io.emit('sensor-data', data);
-          console.log('Sensor data broadcasted to clients');
-        }
-      } else {
-        console.error('Invalid data format:', data);
-      }
+      // 使用 SensorService 处理数据
+      await sensorService.processSensorData(data, this.io || undefined);
+      console.log('Sensor data processed successfully');
     } catch (error) {
-      console.error('Error handling MQTT message:', error);
-    }
-  }
-
-  // 验证数据格式
-  private validateData(data: any): boolean {
-    return (
-      data.deviceId &&
-      typeof data.timestamp === 'number' &&
-      typeof data.temperature === 'number' &&
-      typeof data.humidity === 'number'
-    );
-  }
-
-  // 根据温湿度获取状态
-  private getStatus(temperature: number, humidity: number): string {
-    if (temperature > 30) {
-      return 'high-temperature';
-    } else if (humidity > 80) {
-      return 'high-humidity';
-    } else {
-      return 'normal';
+      console.error('Error handling MQTT message:', error instanceof Error ? error.message : error);
     }
   }
 

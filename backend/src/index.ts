@@ -5,10 +5,8 @@ import http from 'http';
 import { Server } from 'socket.io';
 import sensorController from './controllers/sensorController';
 import mqttService from './services/mqttService';
-
-// 配置
-const PORT = process.env.PORT || 3002;
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/datacenter-dt';
+import { CONFIG } from './config';
+import { errorHandler, asyncHandler } from './middleware/errorHandler';
 
 // 创建Express应用
 const app = express();
@@ -28,15 +26,18 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // 路由
-app.get('/api/sensor/latest', sensorController.getLatestData);
-app.get('/api/sensor/historical', sensorController.getHistoricalData);
-app.get('/api/sensor/devices', sensorController.getDevices);
-app.post('/api/sensor/data', (req, res) => sensorController.receiveData(req, res, io));
+app.get('/api/sensor/latest', asyncHandler(sensorController.getLatestData));
+app.get('/api/sensor/historical', asyncHandler(sensorController.getHistoricalData));
+app.get('/api/sensor/devices', asyncHandler(sensorController.getDevices));
+app.post('/api/sensor/data', asyncHandler((req: express.Request, res: express.Response) => sensorController.receiveData(req, res, io)));
 
 // 健康检查
 app.get('/health', (_req, res) => {
-  res.status(200).json({ status: 'ok' });
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+// 全局错误处理
+app.use(errorHandler);
 
 // Socket.io事件
 io.on('connection', (socket) => {
@@ -51,17 +52,16 @@ io.on('connection', (socket) => {
 async function init() {
   try {
     // 连接MongoDB
-    await mongoose.connect(MONGODB_URI);
+    await mongoose.connect(CONFIG.MONGODB_URI);
     console.log('MongoDB connected');
 
     // 初始化MQTT服务
     mqttService.init(io);
 
     // 启动服务器
-    server.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-      console.log(`Health check: http://localhost:${PORT}/health`);
-      console.log(`API docs: http://localhost:${PORT}/api`);
+    server.listen(CONFIG.PORT, () => {
+      console.log(`Server running on port ${CONFIG.PORT}`);
+      console.log(`Health check: http://localhost:${CONFIG.PORT}/health`);
     });
 
   } catch (error) {
