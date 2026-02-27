@@ -11,6 +11,11 @@ services:
         condition: service_healthy
     networks:
       - dt-network
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: "512M"
 
   # 后端服务
   backend:
@@ -37,6 +42,11 @@ services:
       retries: 3
     networks:
       - dt-network
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: "1G"
 
   # MongoDB数据库 (升级到 6.0)
   mongo:
@@ -52,6 +62,11 @@ services:
       retries: 5
     networks:
       - dt-network
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: "1G"
 
   # MQTT broker
   mosquitto:
@@ -65,10 +80,17 @@ services:
     restart: unless-stopped
     networks:
       - dt-network
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: "256M"
 
 networks:
   dt-network:
     driver: bridge
+    driver_opts:
+      com.docker.network.driver.mtu: "1500"
 
 volumes:
   mongo-db-data:
