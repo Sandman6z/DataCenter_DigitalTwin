@@ -47,10 +47,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, defineAsyncComponent } from 'vue'
 import { useSensorStore } from './store/sensorStore'
-import SensorChart from './components/SensorChart.vue'
-import DataCenter3D from './components/DataCenter3D.vue'
+
+// 动态导入组件，实现懒加载
+const SensorChart = defineAsyncComponent(() => import('./components/SensorChart.vue'))
+const DataCenter3D = defineAsyncComponent(() => import('./components/DataCenter3D.vue'))
 
 const sensorStore = useSensorStore()
 const selectedDevice = ref('')

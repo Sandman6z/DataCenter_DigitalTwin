@@ -1,5 +1,5 @@
 <template>
-  <div class="view-3d">
+  <div class="view-3d" ref="containerRef">
     <h3>3D机房模型</h3>
     <div ref="threeRef" class="three-container"></div>
   </div>
@@ -13,35 +13,29 @@ import { useSensorStore } from '../store/sensorStore'
 
 const sensorStore = useSensorStore()
 const threeRef = ref<HTMLElement>()
+const containerRef = ref<HTMLElement>()
 
 let scene: THREE.Scene | null = null
 let camera: THREE.PerspectiveCamera | null = null
 let renderer: THREE.WebGLRenderer | null = null
 let controls: OrbitControls | null = null
-let statusLights: THREE.Mesh[] = []
+let rackInstances: THREE.InstancedMesh | null = null
+let lightInstances: THREE.InstancedMesh | null = null
+let animationId: number | null = null
+let isVisible = true
 
-// 创建机柜模型
-const createRack = (x: number, z: number) => {
-  const group = new THREE.Group()
-
-  // 机柜主体
-  const bodyGeometry = new THREE.BoxGeometry(0.8, 1.8, 0.8)
-  const bodyMaterial = new THREE.MeshPhongMaterial({ color: 0x333333 })
-  const body = new THREE.Mesh(bodyGeometry, bodyMaterial)
-  body.position.y = 0.9
-  group.add(body)
-
-  // 状态灯
-  const lightGeometry = new THREE.SphereGeometry(0.05, 16, 16)
-  const lightMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 })
-  const light = new THREE.Mesh(lightGeometry, lightMaterial)
-  light.position.set(0, 1.6, 0.41)
-  group.add(light)
-  statusLights.push(light)
-
-  group.position.set(x, 0, z)
-  return group
-}
+// 机柜位置
+const rackPositions = [
+  { x: -2, z: -2 },
+  { x: 0, z: -2 },
+  { x: 2, z: -2 },
+  { x: -2, z: 0 },
+  { x: 0, z: 0 },
+  { x: 2, z: 0 },
+  { x: -2, z: 2 },
+  { x: 0, z: 2 },
+  { x: 2, z: 2 }
+]
 
 // 创建机房模型
 const createDataCenterModel = () => {
@@ -58,12 +52,39 @@ const createDataCenterModel = () => {
   const gridHelper = new THREE.GridHelper(10, 10)
   scene.add(gridHelper)
 
-  // 放置机柜
-  for (let i = -2; i <= 2; i += 2) {
-    for (let j = -2; j <= 2; j += 2) {
-      scene.add(createRack(i, j))
-    }
+  // 使用InstancedMesh创建机柜
+  const rackGeometry = new THREE.BoxGeometry(0.8, 1.8, 0.8)
+  const rackMaterial = new THREE.MeshPhongMaterial({ color: 0x333333 })
+  rackInstances = new THREE.InstancedMesh(rackGeometry, rackMaterial, rackPositions.length)
+  
+  // 使用InstancedMesh创建状态灯
+  const lightGeometry = new THREE.SphereGeometry(0.05, 16, 16)
+  const lightMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 })
+  lightInstances = new THREE.InstancedMesh(lightGeometry, lightMaterial, rackPositions.length)
+
+  // 设置实例矩阵
+  const rackMatrix = new THREE.Matrix4()
+  const lightMatrix = new THREE.Matrix4()
+  
+  rackPositions.forEach((position, index) => {
+    // 设置机柜位置
+    rackMatrix.makeTranslation(position.x, 0.9, position.z)
+    rackInstances?.setMatrixAt(index, rackMatrix)
+    
+    // 设置状态灯位置
+    lightMatrix.makeTranslation(position.x, 1.6, position.z + 0.41)
+    lightInstances?.setMatrixAt(index, lightMatrix)
+  })
+
+  if (rackInstances) {
+    rackInstances.instanceMatrix.needsUpdate = true
   }
+  if (lightInstances) {
+    lightInstances.instanceMatrix.needsUpdate = true
+  }
+
+  scene.add(rackInstances)
+  scene.add(lightInstances)
 }
 
 // 初始化3D场景
@@ -92,28 +113,61 @@ const initThreeScene = () => {
   controls.dampingFactor = 0.05
 
   createDataCenterModel()
+  startAnimation()
+  
+  // 监听可见性变化
+  const observer = new IntersectionObserver((entries) => {
+    isVisible = entries[0].isIntersecting
+    if (isVisible) {
+      startAnimation()
+    } else {
+      stopAnimation()
+    }
+  })
+  
+  if (containerRef.value) {
+    observer.observe(containerRef.value)
+  }
+}
+
+// 启动动画
+const startAnimation = () => {
+  if (animationId !== null) return
   animate()
+}
+
+// 停止动画
+const stopAnimation = () => {
+  if (animationId !== null) {
+    cancelAnimationFrame(animationId)
+    animationId = null
+  }
 }
 
 // 动画循环
 const animate = () => {
-  if (!renderer || !scene || !camera) return
-  requestAnimationFrame(animate)
+  if (!isVisible || !renderer || !scene || !camera) {
+    animationId = null
+    return
+  }
+  
+  animationId = requestAnimationFrame(animate)
   if (controls) controls.update()
   renderer.render(scene, camera)
 }
 
 // 更新状态灯颜色
 const updateStatusLights = (status: string) => {
+  if (!lightInstances) return
+  
   let color = 0x00ff00 // 正常
   if (status === 'high-temperature') color = 0xff0000 // 高温
   else if (status === 'high-humidity') color = 0xffff00 // 高湿
 
-  statusLights.forEach(light => {
-    if (light.material instanceof THREE.MeshBasicMaterial) {
-      light.material.color.setHex(color)
-    }
-  })
+  // 更新所有实例的颜色
+  if (lightInstances.material instanceof THREE.MeshBasicMaterial) {
+    lightInstances.material.color.setHex(color)
+  }
 }
 
 // 监听窗口大小变化
@@ -138,10 +192,21 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
+  stopAnimation()
   if (renderer) {
     renderer.dispose()
     renderer.forceContextLoss()
   }
+  // 清理场景资源
+  if (scene) {
+    scene.clear()
+  }
+  rackInstances = null
+  lightInstances = null
+  scene = null
+  camera = null
+  renderer = null
+  controls = null
 })
 </script>
 
