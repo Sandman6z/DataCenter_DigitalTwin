@@ -15,7 +15,7 @@ const chartRef = ref<HTMLElement>()
 let chart: echarts.ECharts | null = null
 
 // 初始化图表
-const initChart = () => {
+const initChart = (): void => {
   if (chartRef.value) {
     chart = echarts.init(chartRef.value)
     updateChart()
@@ -23,7 +23,7 @@ const initChart = () => {
 }
 
 // 更新图表数据
-const updateChart = () => {
+const updateChart = (): void => {
   if (!chart) return
 
   const data = [...sensorStore.historicalData].reverse()
@@ -31,7 +31,7 @@ const updateChart = () => {
   const temperature = data.map(d => d.temperature)
   const humidity = data.map(d => d.humidity)
 
-  const option = {
+  const option: echarts.EChartsOption = {
     tooltip: {
       trigger: 'axis'
     },
@@ -81,7 +81,7 @@ watch(() => sensorStore.historicalData, () => {
 }, { deep: true })
 
 // 监听窗口大小变化
-const handleResize = () => {
+const handleResize = (): void => {
   if (chart) chart.resize()
 }
 

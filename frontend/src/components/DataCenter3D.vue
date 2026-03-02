@@ -24,8 +24,14 @@ let lightInstances: THREE.InstancedMesh | null = null
 let animationId: number | null = null
 let isVisible = true
 
+// 机柜位置类型
+type Position = {
+  x: number
+  z: number
+}
+
 // 机柜位置
-const rackPositions = [
+const rackPositions: Position[] = [
   { x: -2, z: -2 },
   { x: 0, z: -2 },
   { x: 2, z: -2 },
@@ -38,7 +44,7 @@ const rackPositions = [
 ]
 
 // 创建机房模型
-const createDataCenterModel = () => {
+const createDataCenterModel = (): void => {
   if (!scene) return
 
   // 地板
@@ -88,7 +94,7 @@ const createDataCenterModel = () => {
 }
 
 // 初始化3D场景
-const initThreeScene = () => {
+const initThreeScene = (): void => {
   if (!threeRef.value) return
 
   scene = new THREE.Scene()
@@ -116,7 +122,7 @@ const initThreeScene = () => {
   startAnimation()
   
   // 监听可见性变化
-  const observer = new IntersectionObserver((entries) => {
+  const observer = new IntersectionObserver((entries: IntersectionObserverEntry[]) => {
     isVisible = entries[0].isIntersecting
     if (isVisible) {
       startAnimation()
@@ -131,13 +137,13 @@ const initThreeScene = () => {
 }
 
 // 启动动画
-const startAnimation = () => {
+const startAnimation = (): void => {
   if (animationId !== null) return
   animate()
 }
 
 // 停止动画
-const stopAnimation = () => {
+const stopAnimation = (): void => {
   if (animationId !== null) {
     cancelAnimationFrame(animationId)
     animationId = null
@@ -145,7 +151,7 @@ const stopAnimation = () => {
 }
 
 // 动画循环
-const animate = () => {
+const animate = (): void => {
   if (!isVisible || !renderer || !scene || !camera) {
     animationId = null
     return
@@ -157,7 +163,7 @@ const animate = () => {
 }
 
 // 更新状态灯颜色
-const updateStatusLights = (status: string) => {
+const updateStatusLights = (status: string): void => {
   if (!lightInstances) return
   
   let color = 0x00ff00 // 正常
@@ -171,7 +177,7 @@ const updateStatusLights = (status: string) => {
 }
 
 // 监听窗口大小变化
-const handleResize = () => {
+const handleResize = (): void => {
   if (!threeRef.value || !camera || !renderer) return
   camera.aspect = threeRef.value.clientWidth / threeRef.value.clientHeight
   camera.updateProjectionMatrix()
