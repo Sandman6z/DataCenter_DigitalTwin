@@ -5,9 +5,10 @@ import sensorService from './sensorService';
 // MQTT配置
 const MQTT_CONFIG = {
   host: process.env.MQTT_BROKER || 'mqtt://localhost',
-  port: parseInt(process.env.MQTT_PORT || '1883'),
   topic: process.env.MQTT_TOPIC || 'datacenter/sensors',
-  clientId: `mqtt-client-${Math.random().toString(16).substr(2, 8)}`
+  clientId: `mqtt-client-${Math.random().toString(16).substr(2, 8)}`,
+  username: process.env.MQTT_USERNAME || 'admin',
+  password: process.env.MQTT_PASSWORD || 'admin123'
 };
 
 // MQTT服务类
@@ -21,9 +22,11 @@ class MqttService {
     
     try {
       this.client = mqtt.connect(MQTT_CONFIG.host, {
-        port: MQTT_CONFIG.port,
         clientId: MQTT_CONFIG.clientId,
-        clean: true
+        clean: true,
+        username: MQTT_CONFIG.username,
+        password: MQTT_CONFIG.password,
+        rejectUnauthorized: false // 允许自签名证书
       });
 
       this.client.on('connect', () => {

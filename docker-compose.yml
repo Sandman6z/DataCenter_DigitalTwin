@@ -30,6 +30,8 @@ services:
       - PORT=3000
       - MQTT_BROKER=mqtt://mosquitto:1883
       - MQTT_TOPIC=datacenter/sensors
+      - MQTT_USERNAME=admin
+      - MQTT_PASSWORD=admin123
     depends_on:
       mongo:
         condition: service_healthy
@@ -73,8 +75,12 @@ services:
     image: eclipse-mosquitto:2.0
     ports:
       - "1883:1883"
+      - "8883:8883"
     volumes:
       - ./mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - ./mosquitto/config/password_file:/mosquitto/config/password_file
+      - ./mosquitto/config/acl_file:/mosquitto/config/acl_file
+      - ./mosquitto/certs:/mosquitto/certs
       - mosquitto-data:/mosquitto/data
       - mosquitto-log:/mosquitto/log
     restart: unless-stopped
@@ -91,6 +97,8 @@ networks:
     driver: bridge
     driver_opts:
       com.docker.network.driver.mtu: "1500"
+    internal: false
+    attachable: false
 
 volumes:
   mongo-db-data:

@@ -1,0 +1,6 @@
+# 管理员用户可以访问所有主题
+user admin
+pattern readwrite #
+
+# 传感器设备只能发布数据到datacenter/sensors主题
+pattern write datacenter/sensors
