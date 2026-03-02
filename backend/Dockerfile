@@ -4,17 +4,20 @@ FROM node:20-alpine as build
 # 设置工作目录
 WORKDIR /app
 
+# 全局安装 TypeScript
+RUN npm install -g typescript
+
 # 复制package.json和package-lock.json
 COPY package*.json ./
 
-# 安装依赖
-RUN npm install
+# 清理缓存并安装依赖
+RUN npm cache clean --force && npm install
 
 # 复制源代码
 COPY . .
 
 # 构建应用
-RUN npm run build
+RUN tsc
 
 # 第二阶段：运行后端应用
 FROM node:20-alpine
