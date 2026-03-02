@@ -168,32 +168,242 @@ docker compose down
 
 5. **监控**：部署监控工具，监控容器状态和系统性能
 
-### 9. 常见问题
+## 7. 系统使用指南
 
-#### 端口冲突
+### 7.1 系统功能介绍
 
-如果遇到端口冲突，可以修改 `docker-compose.yml` 文件中的端口映射配置，使用其他可用端口。
+#### 实时温湿度监控
+- 实时展示当前机房的温度和湿度数据
+- 提供精确到小数点后一位的数值显示
+- 自动检测并显示设备状态（正常/告警）
 
-#### 容器启动失败
+#### 3D机房环境可视化
+- 通过 Three.js 构建的 3D 机房模型
+- 机柜状态灯实时反映设备状态（绿色：正常，红色：高温告警，黄色：高湿告警）
+- 支持鼠标拖动旋转视角，滚轮缩放场景
 
-使用以下命令查看容器日志，了解启动失败的原因：
+#### 历史数据趋势分析
+- 使用 ECharts 展示温度和湿度的历史变化趋势
+- 支持查看不同设备的历史数据
+- 图表自动更新，反映最新数据变化
 
-```bash
-docker compose logs -f
+#### 设备状态管理
+- 支持选择特定设备查看其详细数据
+- 设备列表自动更新，显示所有已连接的设备
+- 实时监控设备连接状态
+
+### 7.2 用户操作指南
+
+#### 访问系统
+1. 在浏览器中输入 `http://localhost`（或配置的域名）
+2. 等待系统加载完成，进入主界面
+
+#### 查看实时数据
+1. 系统主界面左侧面板会显示当前温度、湿度和设备状态
+2. 右侧 3D 模型会实时反映设备状态
+3. 连接状态指示器会显示系统是否正常连接
+
+#### 切换设备
+1. 在左侧面板的 "选择设备" 下拉菜单中选择特定设备
+2. 系统会自动更新该设备的实时数据和历史趋势
+3. 3D 模型会更新为该设备的状态
+
+#### 查看历史趋势
+1. 系统会自动显示最近的历史数据趋势
+2. 图表会实时更新，反映最新的数据变化
+3. 鼠标悬停在图表上可以查看具体时间点的数据
+
+#### 识别告警状态
+1. 当温度超过 30°C 时，设备状态会显示 "高温告警"，3D 模型中的状态灯变为红色
+2. 当湿度超过 80% 时，设备状态会显示 "高湿告警"，3D 模型中的状态灯变为黄色
+3. 正常状态下，设备状态显示 "正常"，3D 模型中的状态灯为绿色
+
+### 7.3 常见问题和故障排除
+
+#### 系统无法访问
+- 检查 Docker 容器是否正常运行：`docker compose ps`
+- 检查端口是否被占用：`netstat -ano | findstr :80`
+- 检查防火墙是否阻止了访问
+
+#### 数据不更新
+- 检查 MQTT 服务是否正常运行：`docker compose logs mosquitto`
+- 检查后端服务是否正常运行：`docker compose logs backend`
+- 检查前端连接状态是否显示 "已连接"
+
+#### 3D 模型不显示
+- 检查浏览器是否支持 WebGL
+- 尝试刷新页面
+- 检查浏览器控制台是否有错误信息
+
+#### 历史数据不显示
+- 检查 MongoDB 服务是否正常运行：`docker compose logs mongo`
+- 检查数据库连接配置是否正确
+- 确认设备是否已经发送了数据
+
+#### 告警状态不显示
+- 检查温湿度阈值设置是否正确
+- 确认设备发送的数据是否超过了阈值
+- 检查后端服务日志是否有相关错误
+
+## 8. 部署文档
+
+### 8.1 生产环境部署指南
+
+#### 准备工作
+1. 确保服务器满足以下要求：
+   - CPU：至少 2 核
+   - 内存：至少 4GB
+   - 磁盘：至少 20GB 可用空间
+   - 网络：稳定的网络连接
+
+2. 安装必要的软件：
+   - Docker：版本 20.0 或更高
+   - Docker Compose：版本 1.29 或更高
+   - Git：用于克隆项目源码
+
+#### 部署步骤
+1. 克隆项目源码：
+   ```bash
+   git clone <项目仓库地址>
+   cd DataCenter_DT
+   ```
+
+2. 配置环境变量：
+   - 根据实际环境修改 `docker-compose.yml` 文件中的配置
+   - 确保端口映射和资源限制设置合理
+
+3. 构建并启动容器：
+   ```bash
+   docker compose build
+   docker compose up -d
+   ```
+
+4. 验证部署：
+   - 检查容器状态：`docker compose ps`
+   - 访问系统：`http://服务器IP`
+   - 检查服务日志：`docker compose logs -f`
+
+#### 安全配置
+1. **MQTT 安全**：
+   - 修改 `mosquitto/config/mosquitto.conf` 文件
+   - 设置 `allow_anonymous false`
+   - 配置密码文件：`mosquitto_passwd -c /mosquitto/config/passwd <username>`
+
+2. **网络安全**：
+   - 配置防火墙，只开放必要的端口
+   - 考虑使用反向代理并启用 HTTPS
+   - 定期更新系统和依赖包
+
+### 8.2 不同环境的配置示例
+
+#### 开发环境配置
+```yaml
+# docker-compose.dev.yml
+services:
+  backend:
+    environment:
+      - NODE_ENV=development
+      - MONGODB_URI=mongodb://mongo:27017/datacenter-dt-dev
+    volumes:
+      - ./backend/src:/app/src
+    command: npm run dev
+
+  frontend:
+    ports:
+      - "3001:80"
+
+  mongo:
+    ports:
+      - "27018:27017"
 ```
 
-#### MQTT 连接失败
+#### 测试环境配置
+```yaml
+# docker-compose.test.yml
+services:
+  backend:
+    environment:
+      - NODE_ENV=test
+      - MONGODB_URI=mongodb://mongo:27017/datacenter-dt-test
 
-确保 Mosquitto 容器已经正常启动，并且后端配置的 `MQTT_BROKER` 地址为 `mqtt://mosquitto:1883`。
+  frontend:
+    environment:
+      - VITE_API_URL=http://localhost:3000/api
 
-#### MongoDB 连接失败
+  mongo:
+    volumes:
+      - mongo-test-data:/data/db
 
-确保 MongoDB 容器已经正常启动，并且后端配置的 `MONGODB_URI` 地址为 `mongodb://mongo:27017/datacenter-dt`。
+volumes:
+  mongo-test-data:
+```
 
-#### 前端无法连接到后端
+#### 生产环境配置
+```yaml
+# docker-compose.prod.yml
+services:
+  backend:
+    environment:
+      - NODE_ENV=production
+      - MONGODB_URI=mongodb://mongo:27017/datacenter-dt
+      - PORT=3000
 
-确保后端容器已经正常启动，并且前端代码中的 Socket 连接使用相对路径。
+  frontend:
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./ssl:/etc/nginx/ssl
 
-#### 构建镜像失败
+  mongo:
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: "4G"
+```
 
-确保您的网络连接正常，并且 Docker 环境配置正确。如果构建过程中遇到依赖安装失败，可以尝试修改 Dockerfile 中的镜像源。
+### 8.3 监控和维护的最佳实践
+
+#### 监控方案
+1. **容器监控**：
+   - 使用 Docker Desktop 或 Portainer 监控容器状态
+   - 配置 Prometheus + Grafana 监控系统性能
+
+2. **应用监控**：
+   - 实现健康检查端点：`/health`
+   - 配置日志收集和分析系统
+   - 设置告警机制，当服务异常时及时通知
+
+3. **数据监控**：
+   - 监控 MongoDB 数据增长情况
+   - 定期检查数据备份状态
+   - 监控 MQTT 消息传输状态
+
+#### 维护策略
+1. **定期备份**：
+   - 配置 MongoDB 定期备份：
+     ```bash
+     docker exec -it <mongo-container> mongodump --out /backup
+     ```
+   - 定期备份配置文件和重要数据
+
+2. **更新策略**：
+   - 定期更新依赖包，修复安全漏洞
+   - 定期更新 Docker 镜像，保持系统安全
+   - 制定更新计划，避免业务中断
+
+3. **故障排查**：
+   - 建立详细的故障排查流程
+   - 维护常见问题和解决方案文档
+   - 定期进行灾难恢复演练
+
+4. **性能优化**：
+   - 监控系统性能指标，识别瓶颈
+   - 根据实际负载调整资源分配
+   - 优化数据库查询和索引
+
+5. **安全审计**：
+   - 定期进行安全扫描，发现潜在漏洞
+   - 检查系统日志，识别异常行为
+   - 定期更新安全策略和访问控制
