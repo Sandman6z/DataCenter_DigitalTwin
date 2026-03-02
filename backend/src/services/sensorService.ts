@@ -45,7 +45,14 @@ class SensorService {
     if (deviceId) {
       query.deviceId = deviceId;
     }
-    return await SensorData.findOne(query).sort({ timestamp: -1 }).exec();
+    return await SensorData.findOne(query, {
+      _id: 1,
+      deviceId: 1,
+      temperature: 1,
+      humidity: 1,
+      status: 1,
+      timestamp: 1
+    }).sort({ timestamp: -1 }).exec();
   }
 
   /**
@@ -62,7 +69,14 @@ class SensorService {
       if (endTime) query.timestamp.$lte = endTime;
     }
 
-    return await SensorData.find(query)
+    return await SensorData.find(query, {
+      _id: 1,
+      deviceId: 1,
+      temperature: 1,
+      humidity: 1,
+      status: 1,
+      timestamp: 1
+    })
       .sort({ timestamp: -1 })
       .limit(limit)
       .exec();

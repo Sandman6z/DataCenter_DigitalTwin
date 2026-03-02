@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import cors from 'cors';
 import http from 'http';
 import { Server } from 'socket.io';
+import rateLimit from 'express-rate-limit';
 import sensorController from './controllers/sensorController';
 import mqttService from './services/mqttService';
 import { CONFIG } from './config';
@@ -15,13 +16,32 @@ const server = http.createServer(app);
 // 初始化Socket.io
 const io = new Server(server, {
   cors: {
-    origin: '*', // 在生产环境中应该设置具体的域名
-    methods: ['GET', 'POST']
+    origin: CONFIG.IS_PRODUCTION ? 'http://localhost' : '*', // 在生产环境中设置具体的域名
+    methods: ['GET', 'POST'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+  }
+});
+
+// 请求限流中间件
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15分钟
+  max: 100, // 每个IP在windowMs时间内最多100个请求
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    status: 'error',
+    message: '请求过于频繁，请稍后再试'
   }
 });
 
 // 中间件
-app.use(cors());
+app.use(cors({
+  origin: CONFIG.IS_PRODUCTION ? 'http://localhost' : '*', // 在生产环境中设置具体的域名
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
+app.use(limiter); // 应用请求限流
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

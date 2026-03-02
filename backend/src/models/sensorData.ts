@@ -19,7 +19,8 @@ const SensorDataSchema: Schema = new Schema({
   },
   timestamp: {
     type: Number,
-    required: true
+    required: true,
+    index: true
   },
   temperature: {
     type: Number,
