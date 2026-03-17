@@ -81,8 +81,14 @@ watch(() => sensorStore.historicalData, () => {
 }, { deep: true })
 
 // 监听窗口大小变化
+let resizeTimeout: number | null = null
 const handleResize = (): void => {
-  if (chart) chart.resize()
+  if (resizeTimeout) {
+    clearTimeout(resizeTimeout)
+  }
+  resizeTimeout = window.setTimeout(() => {
+    if (chart) chart.resize()
+  }, 100)
 }
 
 onMounted(() => {
@@ -92,6 +98,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
+  if (resizeTimeout) clearTimeout(resizeTimeout)
   if (chart) chart.dispose()
 })
 </script>

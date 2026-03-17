@@ -16,6 +16,7 @@ export const useSensorStore = defineStore('sensor', () => {
   const historicalData = ref<SensorData[]>([])
   const devices = ref<string[]>([])
   const isConnected = ref(false)
+  const selectedDevice = ref<string>('')
   let socket: Socket | null = null
 
   const currentStatus = computed(() => latestData.value?.status || 'normal')
@@ -43,9 +44,17 @@ export const useSensorStore = defineStore('sensor', () => {
     })
 
     socket.on('sensor-data', (data: SensorData) => {
+      // 如果选择了特定设备，且当前推送的数据不是该设备，则忽略
+      if (selectedDevice.value && data.deviceId !== selectedDevice.value) {
+        return;
+      }
+      
       latestData.value = data
-      // 将新数据添加到历史记录开头
-      historicalData.value = [data, ...historicalData.value].slice(0, 100)
+      // 优化数组操作性能
+      historicalData.value.unshift(data)
+      if (historicalData.value.length > 100) {
+        historicalData.value.pop()
+      }
     })
   }
 
@@ -88,6 +97,7 @@ export const useSensorStore = defineStore('sensor', () => {
     historicalData,
     devices,
     isConnected,
+    selectedDevice,
     currentStatus,
     currentTemp,
     currentHumidity,

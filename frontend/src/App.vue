@@ -25,7 +25,7 @@
             </div>
             <div class="stat-item device-select">
               <label>选择设备：</label>
-              <select v-model="selectedDevice" @change="handleDeviceChange">
+              <select v-model="sensorStore.selectedDevice" @change="handleDeviceChange">
                 <option value="">全部设备</option>
                 <option v-for="device in sensorStore.devices" :key="device" :value="device">
                   {{ device }}
@@ -47,7 +47,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, defineAsyncComponent } from 'vue'
+import { onMounted, computed, defineAsyncComponent } from 'vue'
 import { useSensorStore } from './store/sensorStore'
 
 // 动态导入组件，实现懒加载
@@ -55,7 +55,6 @@ const SensorChart = defineAsyncComponent(() => import('./components/SensorChart.
 const DataCenter3D = defineAsyncComponent(() => import('./components/DataCenter3D.vue'))
 
 const sensorStore = useSensorStore()
-const selectedDevice = ref('')
 
 const statusLabel = computed(() => {
   switch (sensorStore.currentStatus) {
@@ -74,8 +73,8 @@ const statusClass = computed(() => {
 })
 
 const handleDeviceChange = () => {
-  sensorStore.fetchLatestData(selectedDevice.value)
-  sensorStore.fetchHistoricalData(selectedDevice.value)
+  sensorStore.fetchLatestData(sensorStore.selectedDevice)
+  sensorStore.fetchHistoricalData(sensorStore.selectedDevice)
 }
 
 onMounted(() => {

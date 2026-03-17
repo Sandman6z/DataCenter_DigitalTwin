@@ -65,7 +65,7 @@ const createDataCenterModel = (): void => {
   
   // 使用InstancedMesh创建状态灯
   const lightGeometry = new THREE.SphereGeometry(0.05, 16, 16)
-  const lightMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 })
+  const lightMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff })
   lightInstances = new THREE.InstancedMesh(lightGeometry, lightMaterial, rackPositions.length)
 
   // 设置实例矩阵
@@ -170,18 +170,27 @@ const updateStatusLights = (status: string): void => {
   if (status === 'high-temperature') color = 0xff0000 // 高温
   else if (status === 'high-humidity') color = 0xffff00 // 高湿
 
-  // 更新所有实例的颜色
-  if (lightInstances.material instanceof THREE.MeshBasicMaterial) {
-    lightInstances.material.color.setHex(color)
+  const tempColor = new THREE.Color(color)
+  
+  // 更新所有实例的颜色 (实际应用中可以根据设备ID分别更新对应机柜)
+  for (let i = 0; i < rackPositions.length; i++) {
+    lightInstances.setColorAt(i, tempColor)
+  }
+  if (lightInstances.instanceColor) {
+    lightInstances.instanceColor.needsUpdate = true
   }
 }
 
 // 监听窗口大小变化
+let resizeTimeout: number | null = null
 const handleResize = (): void => {
-  if (!threeRef.value || !camera || !renderer) return
-  camera.aspect = threeRef.value.clientWidth / threeRef.value.clientHeight
-  camera.updateProjectionMatrix()
-  renderer.setSize(threeRef.value.clientWidth, threeRef.value.clientHeight)
+  if (resizeTimeout) clearTimeout(resizeTimeout)
+  resizeTimeout = window.setTimeout(() => {
+    if (!threeRef.value || !camera || !renderer) return
+    camera.aspect = threeRef.value.clientWidth / threeRef.value.clientHeight
+    camera.updateProjectionMatrix()
+    renderer.setSize(threeRef.value.clientWidth, threeRef.value.clientHeight)
+  }, 100)
 }
 
 // 监听状态变化
@@ -198,13 +207,28 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
+  if (resizeTimeout) clearTimeout(resizeTimeout)
   stopAnimation()
   if (renderer) {
     renderer.dispose()
     renderer.forceContextLoss()
   }
-  // 清理场景资源
+  // 清理场景资源，防止内存泄漏
   if (scene) {
+    scene.traverse((object) => {
+      if (object instanceof THREE.Mesh || object instanceof THREE.InstancedMesh) {
+        if (object.geometry) {
+          object.geometry.dispose()
+        }
+        if (object.material) {
+          if (Array.isArray(object.material)) {
+            object.material.forEach(m => m.dispose())
+          } else {
+            object.material.dispose()
+          }
+        }
+      }
+    })
     scene.clear()
   }
   rackInstances = null

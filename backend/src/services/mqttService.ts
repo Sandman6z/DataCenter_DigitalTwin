@@ -1,15 +1,7 @@
 import mqtt from 'mqtt';
 import { Server } from 'socket.io';
 import sensorService from './sensorService';
-
-// MQTT配置
-const MQTT_CONFIG = {
-  host: process.env.MQTT_BROKER || 'mqtt://localhost',
-  topic: process.env.MQTT_TOPIC || 'datacenter/sensors',
-  clientId: `mqtt-client-${Math.random().toString(16).substr(2, 8)}`,
-  username: process.env.MQTT_USERNAME || 'admin',
-  password: process.env.MQTT_PASSWORD || 'admin123'
-};
+import { CONFIG } from '../config';
 
 // MQTT服务类
 class MqttService {
@@ -21,21 +13,21 @@ class MqttService {
     this.io = io;
     
     try {
-      this.client = mqtt.connect(MQTT_CONFIG.host, {
-        clientId: MQTT_CONFIG.clientId,
+      this.client = mqtt.connect(CONFIG.MQTT.BROKER, {
+        clientId: CONFIG.MQTT.CLIENT_ID,
         clean: true,
-        username: MQTT_CONFIG.username,
-        password: MQTT_CONFIG.password,
+        username: CONFIG.MQTT.USERNAME,
+        password: CONFIG.MQTT.PASSWORD,
         rejectUnauthorized: false // 允许自签名证书
       });
 
       this.client.on('connect', () => {
         console.log('MQTT connected');
-        this.client?.subscribe(MQTT_CONFIG.topic, (err) => {
+        this.client?.subscribe(CONFIG.MQTT.TOPIC, (err) => {
           if (err) {
             console.error('MQTT subscribe error:', err);
           } else {
-            console.log('MQTT subscribed to topic:', MQTT_CONFIG.topic);
+            console.log('MQTT subscribed to topic:', CONFIG.MQTT.TOPIC);
           }
         });
       });

@@ -16,7 +16,7 @@ const server = http.createServer(app);
 // 初始化Socket.io
 const io = new Server(server, {
   cors: {
-    origin: CONFIG.IS_PRODUCTION ? 'http://localhost' : '*', // 在生产环境中设置具体的域名
+    origin: CONFIG.CORS_ORIGIN,
     methods: ['GET', 'POST'],
     allowedHeaders: ['Content-Type', 'Authorization']
   }
@@ -36,7 +36,7 @@ const limiter = rateLimit({
 
 // 中间件
 app.use(cors({
-  origin: CONFIG.IS_PRODUCTION ? 'http://localhost' : '*', // 在生产环境中设置具体的域名
+  origin: CONFIG.CORS_ORIGIN,
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
@@ -90,19 +90,27 @@ async function init() {
   }
 }
 
-// 启动应用
-init();
+// 启动应用 - 只在直接运行时执行
+if (require.main === module) {
+  init();
 
-// 优雅关闭
-process.on('SIGINT', async () => {
-  try {
-    await mongoose.disconnect();
-    mqttService.disconnect();
-    server.close();
-    console.log('Server gracefully stopped');
-    process.exit(0);
-  } catch (error) {
-    console.error('Error during shutdown:', error);
-    process.exit(1);
-  }
-});
+  // 优雅关闭
+  process.on('SIGINT', async () => {
+    try {
+      await mongoose.disconnect();
+      mqttService.disconnect();
+      server.close();
+      console.log('Server gracefully stopped');
+      process.exit(0);
+    } catch (error) {
+      console.error('Error during shutdown:', error);
+      process.exit(1);
+    }
+  });
+}
+
+// 导出app供测试使用
+export default app;
+
+// 导出init函数供测试使用
+export { init };
