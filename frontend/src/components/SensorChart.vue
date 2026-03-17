@@ -27,9 +27,15 @@ const updateChart = (): void => {
   if (!chart) return
 
   const data = [...sensorStore.historicalData].reverse()
-  const time = data.map(d => new Date(d.timestamp).toLocaleTimeString())
-  const temperature = data.map(d => d.temperature)
-  const humidity = data.map(d => d.humidity)
+  // 将数据转换为 [时间戳, 值] 的二维数组，对于错误或无数据状态，设置值为 null 以实现折线断开
+  const temperature = data.map(d => [
+    new Date(d.timestamp).getTime(), 
+    (d.status === 'error' || d.temperature == null) ? null : d.temperature
+  ])
+  const humidity = data.map(d => [
+    new Date(d.timestamp).getTime(), 
+    (d.status === 'error' || d.humidity == null) ? null : d.humidity
+  ])
 
   const option: echarts.EChartsOption = {
     tooltip: {
@@ -39,8 +45,7 @@ const updateChart = (): void => {
       data: ['温度', '湿度']
     },
     xAxis: {
-      type: 'category',
-      data: time
+      type: 'time', // 改为时间轴，自动根据绝对时间间隔渲染
     },
     yAxis: [
       {
@@ -60,6 +65,7 @@ const updateChart = (): void => {
         type: 'line',
         data: temperature,
         smooth: true,
+        connectNulls: false, // 遇到 null 值断开连接
         sampling: 'lttb', // 降采样策略，优化大数据量渲染
         itemStyle: { color: '#ff7675' }
       },
@@ -69,6 +75,7 @@ const updateChart = (): void => {
         yAxisIndex: 1,
         data: humidity,
         smooth: true,
+        connectNulls: false, // 遇到 null 值断开连接
         sampling: 'lttb', // 降采样策略，优化大数据量渲染
         itemStyle: { color: '#74b9ff' }
       }
