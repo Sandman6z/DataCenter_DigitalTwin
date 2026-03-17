@@ -60,6 +60,8 @@ const updateChart = (): void => {
         type: 'line',
         data: temperature,
         smooth: true,
+        sampling: 'lttb', // 降采样策略，优化大数据量渲染
+        large: true, // 开启大数据量优化
         itemStyle: { color: '#ff7675' }
       },
       {
@@ -68,6 +70,8 @@ const updateChart = (): void => {
         yAxisIndex: 1,
         data: humidity,
         smooth: true,
+        sampling: 'lttb', // 降采样策略，优化大数据量渲染
+        large: true, // 开启大数据量优化
         itemStyle: { color: '#74b9ff' }
       }
     ]
