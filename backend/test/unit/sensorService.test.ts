@@ -5,6 +5,7 @@ import sensorDataModel from '../../src/models/sensorData';
 jest.mock('../../src/models/sensorData');
 
 const mockSensorDataModel = sensorDataModel as jest.Mocked<typeof sensorDataModel>;
+mockSensorDataModel.insertMany = jest.fn(); // Mock insertMany
 
 // 模拟SensorData实例
 const mockSensorDataInstance = {
@@ -26,7 +27,10 @@ describe('SensorService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     // 模拟SensorData构造函数
-    (sensorDataModel as any).mockImplementation(() => mockSensorDataInstance);
+    (sensorDataModel as any).mockImplementation((data: any) => ({
+      ...data,
+      ...mockSensorDataInstance
+    }));
     // 模拟findOne方法
     mockSensorDataModel.findOne.mockReturnValue(mockQuery);
     // 模拟find方法
@@ -36,7 +40,7 @@ describe('SensorService', () => {
   });
 
   describe('processSensorData', () => {
-    it('should process and save sensor data', async () => {
+    it('should process and buffer sensor data (not save immediately)', async () => {
       const mockData = {
         deviceId: 'test-device',
         temperature: 25,
@@ -44,27 +48,20 @@ describe('SensorService', () => {
         timestamp: Date.now()
       };
 
-      const mockSavedData = {
-        _id: '123',
-        deviceId: mockData.deviceId,
-        temperature: mockData.temperature,
-        humidity: mockData.humidity,
-        status: 'normal',
-        timestamp: mockData.timestamp,
-        __v: 0
-      };
-
       const mockSocket = {
         emit: jest.fn()
       };
 
-      mockSensorDataInstance.save.mockResolvedValueOnce(mockSavedData);
-
       const result = await sensorService.processSensorData(mockData, mockSocket as any);
 
-      expect(mockSensorDataInstance.save).toHaveBeenCalled();
-      expect(mockSocket.emit).toHaveBeenCalledWith('sensor-data', mockSavedData);
-      expect(result).toEqual(mockSavedData);
+      expect(mockSensorDataInstance.save).not.toHaveBeenCalled();
+      expect(mockSocket.emit).toHaveBeenCalledWith('sensor-data', expect.objectContaining({
+        deviceId: mockData.deviceId,
+        temperature: mockData.temperature,
+        humidity: mockData.humidity
+      }));
+      // Verify result is a SensorData instance (mocked)
+      expect(result).toBeDefined();
     });
 
     it('should set status to high-temperature when temperature is above 30', async () => {
@@ -75,26 +72,19 @@ describe('SensorService', () => {
         timestamp: Date.now()
       };
 
-      const mockSavedData = {
-        _id: '123',
-        deviceId: mockData.deviceId,
-        temperature: mockData.temperature,
-        humidity: mockData.humidity,
-        status: 'high-temperature',
-        timestamp: mockData.timestamp,
-        __v: 0
-      };
-
       const mockSocket = {
         emit: jest.fn()
       };
 
-      mockSensorDataInstance.save.mockResolvedValueOnce(mockSavedData);
+      await sensorService.processSensorData(mockData, mockSocket as any);
 
-      const result = await sensorService.processSensorData(mockData, mockSocket as any);
-
-      expect(mockSensorDataInstance.save).toHaveBeenCalled();
-      expect(result?.status).toBe('high-temperature');
+      expect(mockSensorDataInstance.save).not.toHaveBeenCalled();
+      // Since result is the mocked instance which doesn't have properties set by constructor in mock, 
+      // we can't check result.status directly unless we mock constructor behavior better.
+      // But we can check if the constructor was called with correct status.
+      expect(sensorDataModel).toHaveBeenCalledWith(expect.objectContaining({
+        status: 'high-temperature'
+      }));
     });
 
     it('should set status to high-humidity when humidity is above 80', async () => {
@@ -105,26 +95,16 @@ describe('SensorService', () => {
         timestamp: Date.now()
       };
 
-      const mockSavedData = {
-        _id: '123',
-        deviceId: mockData.deviceId,
-        temperature: mockData.temperature,
-        humidity: mockData.humidity,
-        status: 'high-humidity',
-        timestamp: mockData.timestamp,
-        __v: 0
-      };
-
       const mockSocket = {
         emit: jest.fn()
       };
 
-      mockSensorDataInstance.save.mockResolvedValueOnce(mockSavedData);
+      await sensorService.processSensorData(mockData, mockSocket as any);
 
-      const result = await sensorService.processSensorData(mockData, mockSocket as any);
-
-      expect(mockSensorDataInstance.save).toHaveBeenCalled();
-      expect(result?.status).toBe('high-humidity');
+      expect(mockSensorDataInstance.save).not.toHaveBeenCalled();
+      expect(sensorDataModel).toHaveBeenCalledWith(expect.objectContaining({
+        status: 'high-humidity'
+      }));
     });
   });
 
