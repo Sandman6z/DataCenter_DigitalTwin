@@ -9,6 +9,15 @@ export interface SensorPayload {
 }
 
 class SensorService {
+  private buffer: any[] = [];
+  private readonly BATCH_SIZE = 100;
+  private flushTimer: NodeJS.Timeout | null = null;
+
+  constructor() {
+    // 定期刷新缓冲区，防止数据滞留
+    this.flushTimer = setInterval(() => this.flushBuffer(), 1000);
+  }
+
   /**
    * 验证并处理传感器数据
    */
@@ -19,23 +28,63 @@ class SensorService {
 
     const status = this.calculateStatus(data.temperature, data.humidity);
     
-    const sensorData = new SensorData({
+    // 创建文档对象但不立即保存
+    const sensorDoc = {
       deviceId: data.deviceId,
       timestamp: data.timestamp || Date.now(),
       temperature: data.temperature,
       humidity: data.humidity,
-      status: status
-    });
+      status: status,
+      createdAt: new Date()
+    };
 
-    const savedData = await sensorData.save();
+    // 添加到缓冲区
+    this.buffer.push(sensorDoc);
 
-    // 如果提供了 io，则广播数据
-    if (io) {
-      io.emit('sensor-data', savedData);
+    // 如果缓冲区达到阈值，执行批量写入
+    if (this.buffer.length >= this.BATCH_SIZE) {
+      await this.flushBuffer();
     }
 
-    return savedData;
+    // 如果提供了 io，则广播数据（实时性要求高，不缓冲）
+    if (io) {
+      // 构造临时对象用于广播，避免等待数据库返回
+      const broadcastData = new SensorData(sensorDoc);
+      io.emit('sensor-data', broadcastData);
+    }
+
+    // 返回最新的一条数据（注意：这里不再是已保存的 Document，而是普通对象，调用方需注意）
+    return new SensorData(sensorDoc);
   }
+
+  /**
+   * 刷新缓冲区数据到数据库
+   */
+  private async flushBuffer() {
+    if (this.buffer.length === 0) return;
+
+    const dataToSave = [...this.buffer];
+    this.buffer = []; // 清空缓冲区
+
+    try {
+      await SensorData.insertMany(dataToSave);
+      console.log(`Successfully batch saved ${dataToSave.length} records.`);
+    } catch (error) {
+      console.error('Error batch saving sensor data:', error);
+      // 失败后尝试重新放回缓冲区（可选，视数据重要性而定，这里简单记录日志）
+    }
+  }
+
+  /**
+   * 优雅关闭时刷新剩余数据
+   */
+  async cleanup() {
+    if (this.flushTimer) {
+      clearInterval(this.flushTimer);
+    }
+    await this.flushBuffer();
+  }
+
 
   /**
    * 获取最新数据

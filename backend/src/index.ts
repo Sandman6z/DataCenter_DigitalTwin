@@ -6,6 +6,7 @@ import { Server } from 'socket.io';
 import rateLimit from 'express-rate-limit';
 import sensorController from './controllers/sensorController';
 import mqttService from './services/mqttService';
+import sensorService from './services/sensorService';
 import { CONFIG } from './config';
 import { errorHandler, asyncHandler } from './middleware/errorHandler';
 
@@ -95,14 +96,15 @@ if (require.main === module) {
   init();
 
   // 优雅关闭
-  process.on('SIGINT', async () => {
-    try {
-      await mongoose.disconnect();
-      mqttService.disconnect();
-      server.close();
-      console.log('Server gracefully stopped');
-      process.exit(0);
-    } catch (error) {
+    process.on('SIGINT', async () => {
+      try {
+        await mongoose.disconnect();
+        await sensorService.cleanup(); // 刷新缓冲区数据
+        mqttService.disconnect();
+        server.close();
+        console.log('Server gracefully stopped');
+        process.exit(0);
+      } catch (error) {
       console.error('Error during shutdown:', error);
       process.exit(1);
     }
